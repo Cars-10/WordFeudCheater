@@ -29,7 +29,7 @@ class Game:
 
         # load the state of the board from a saved game
         if filename:
-            filename = filename + ".p" if filename[-2:] != ".p" else filename
+            filename = filename + ".p" if not filename.endswith(".p") else filename
             logger.info("loading saved game from \"{}\"...".format(filename))
             game_data = self.__load_game_data_from_file(filename)
             self.board_type = game_data["board_type"]
@@ -66,7 +66,12 @@ class Game:
 
         if not os.path.exists(full_saved_games_dir):
             os.makedirs(full_saved_games_dir)
-        self.filename = filename if filename else self.filename if self.filename else generate_file_name()
+
+        if filename:
+            self.filename = filename
+        elif not self.filename:
+            self.filename = generate_file_name()
+
         logger.info("Saving game to file \"{}\"...".format(self.filename))
         game_data = {
             "board_type": self.board_type,
@@ -566,12 +571,8 @@ class Move(object):
         self.score = score
 
     def __str__(self):
-        #return "Play \"{}\" {} from {} to get {} points.".format(
-        #    self.word, self.direction, self.start_square, self.score)
         return "game.play({},\"{}\",\"{}\") for {} Points".format(
             self.start_square, self.word, self.direction , self.score)
-
-
 
 class SquareEffect(Enum):
     """An enum for special attributes for a square"""

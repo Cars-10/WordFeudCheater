@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 ["V"] * 2 + ["W"] * 2 + ["X"] * 1 + ["Y"] * 2 + ["Z"] * 1 + ["%"] * 2
 
 
-    image_path = "images/WordFeudScreenshot1.jpeg"
+    image_path = "images/WordFeudScreenshot.jpeg"
     ocr = OcrWordfeudBoard(image_path)
     wf = WordFeudBoard()
     game = sc.Game(board="wordfeud")

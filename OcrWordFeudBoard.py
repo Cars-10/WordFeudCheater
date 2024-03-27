@@ -13,7 +13,7 @@ import utilities.errors as errors
 
 class OcrWordfeudBoard():
     def __init__(self,image_path):
-        self.board = [['  ' for i in range(15)] for j in range(15)]
+        self.board = [['  ' for _ in range(15)] for _ in range(15)]
 
     def update_square(self, x, y, value):
         self.board[x][y] = value
@@ -82,12 +82,12 @@ class OcrWordfeudBoard():
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         # Define HSV ranges for different colors
         color_ranges = {
+            'white': (np.array([0, 0, 200]), np.array([180, 55, 255])),
+            'yellow': (np.array([22, 30, 170]), np.array([45, 150, 255]))
            # 'green': (np.array([35, 50, 50]), np.array([85, 255, 255])),
            # 'blue': (np.array([100, 50, 50]), np.array([140, 255, 255])),
-            'yellow': (np.array([22, 30, 170]), np.array([45, 150, 255])),
            # 'red2': (np.array([160, 50, 50]), np.array([180, 255, 255])),
            # 'orange': (np.array([10, 100, 20]), np.array([25, 255, 255])),
-            'white': (np.array([0, 0, 200]), np.array([180, 55, 255])),
            # 'dark gray': (np.array([30, 30, 40]), np.array([60, 70, 60]))
         }
 
@@ -153,7 +153,6 @@ class OcrWordfeudBoard():
             dominant_color = self.classify_dominant_color(square)
 
             if dominant_color == 'white' or dominant_color == 'yellow':
-                #print(f"The image {row},{column} is mostly {dominant_color}.")
                 #cv2.imwrite('images/tmp/ocr_square_'+str(row)+','+str(column)+'.png', square)
                 letter = self.ocr_tile(square)
                 self.update_square(row, column, letter + " ")
@@ -219,7 +218,7 @@ class OcrWordfeudBoard():
         else:
             # Perform the necessary operations to read the board from the image
             cropped_board = self.open_and_crop_image(image_path, 0, 500, 960, 960)
-            cv2.imwrite('images/cropped_board.png', cropped_board)
+            #cv2.imwrite('images/cropped_board.png', cropped_board)
             squares = self.segment_board_into_squares(cropped_board)
             board_letters = self.read_board(squares)
             # Uncomment to save the board to a file for quicker debugging avoiding OCR
@@ -265,40 +264,39 @@ class WordFeudBoard:
         """
         board_words = []
         placement = []
-        # check regular board
+        board_words.extend(self.check_regular_board(board, placement))
+        board_words.extend(self.check_transposed_board(board, placement))
+        return board_words, placement
+
+    def check_regular_board(self, board, placement):
+        board_words = []
         for row in range(15):
             temp_word = ""
             for col in range(15):
                 letter = board[row][col].letter
                 if letter:
                     temp_word += letter
-                    #print(f"temp_word = {temp_word}")
                 else:
                     if len(temp_word) > 1:
-                        #print(f'game.play(({row}, {col-len(temp_word)}), "{temp_word}", "across")')
                         board_words.append(temp_word)
                         placement.append([(row, col-len(temp_word)), temp_word, "across" ])
-                        #print(f"Final temp_word = {temp_word}")
                     temp_word = ""
+        return board_words
 
-        # check transposed board
+    def check_transposed_board(self, board, placement):
+        board_words = []
         for col in range(15):
             temp_word = ""
             for row in range(15):
                 letter = board[row][col].letter
                 if letter:
-                    # sums up letters till theres a space
                     temp_word += letter
-                    #print(f"temp_word = {temp_word}")
                 else:
                     if len(temp_word) > 1:
-                        #print(f'game.play(({row-len(temp_word)},{col}), "{temp_word}", "down")')
                         placement.append([(row-len(temp_word), col), temp_word, "down"])
                         board_words.append(temp_word)
-                        #print(f"Final temp_word = {temp_word}")
                     temp_word = ""
-        #print(f"board_words = {board_words}")
-        return board_words, placement
+        return board_words
 
 
 
