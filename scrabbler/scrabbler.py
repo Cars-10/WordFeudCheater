@@ -99,6 +99,7 @@ class Game:
         other_direction = "across" if direction == "down" else "down"
         coordinate = start_square
         for _ in word:
+            #print(f"w = {word} coordinate = {coordinate} direction = {direction}")
             self.board.update_cross_set(coordinate, other_direction, self.dictionary)
             coordinate = self.board.offset(coordinate, direction, 1)
 
@@ -251,6 +252,7 @@ class Board:
                 self.square(*coordinate).tile = char
                 offset = offset + 1
                 coordinate = self.offset(start_coordinate, direction, offset)
+                #print(f"start_coordinate = {start_coordinate} direction = {direction} offset = {offset} coordinate = {coordinate}")
         except errors.IllegalMoveError:
             offset = offset - 1
             while offset >= 0:

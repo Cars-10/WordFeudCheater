@@ -53,12 +53,10 @@ def find_move(image_path, ocr, wf, game):
         for j in range(15):
             if ocr.read_square(i,j) != '  ':
                 wf.board[i][j].letter = ocr.read_square(i,j).strip()
-
     _ , placement = wf.all_board_words(wf.board)
     for i in placement:
         game.play(i[0], i[1], i[2])
 
-    #game.board._print_special_tiles()
     print("")
     game.show()
     rack = ''.join(rack)
@@ -70,7 +68,9 @@ def find_move(image_path, ocr, wf, game):
     options = game.find_best_moves(rack)
     op_max = len(options)-1
     if options:
-        user_input = input(f"\nEnter option to play from 0-{op_max}: ")
+        user_input = input(f"\nEnter option to play from 0-{op_max} q=quit: ")
+        if user_input == 'q':
+            sys.exit(0)
         if user_input.isdigit() and int(user_input) in range(op_max):
             move = options[int(user_input)]
 
@@ -98,10 +98,12 @@ if __name__ == "__main__":
     game = sc.Game(board="wordfeud")
 
     i = 0
-    while True:
-        while poll_updated_screenshot(image_path)==False:
-            i += 1
-            print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
-            time.sleep(10)
-        find_move(image_path, ocr, wf, game)
-        game.board.reset_board("wordfeud")
+    while poll_updated_screenshot(image_path)==False:
+        i += 1
+        print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
+        time.sleep(10)
+    find_move(image_path, ocr, wf, game)
+    sys.exit(0)
+    game.board.reset_board("wordfeud")
+
+# TODO create a list of killer small words to not make available to the opponent

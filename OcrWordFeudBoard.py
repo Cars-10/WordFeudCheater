@@ -19,10 +19,6 @@ class OcrWordfeudBoard():
     def read_square(self, x, y):
         return self.board[x][y]
 
-    def display_board(self):
-        for row in self.board:
-            print('  '.join(row))
-
     def get_rack_letters(self, image_path):
         """
         Extracts the letters from the rack in the given image.
@@ -35,7 +31,7 @@ class OcrWordfeudBoard():
         """
         logger.info("Extracting rack letters...")
         cropped_rack = self.open_and_crop_image(image_path, 15, 1700, 930, 120)
-        cv2.imwrite('images/cropped_rack.png', cropped_rack)
+        #cv2.imwrite('images/cropped_rack.png', cropped_rack)
 
         letters = []
         square_size = cropped_rack.shape[1] // 7
@@ -48,10 +44,10 @@ class OcrWordfeudBoard():
             bottom_right_x = (i + 1) * square_size - padding * 2
             square = cropped_rack[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
             #print(f"top_left_y: {top_left_y}, bottom_right_y: {bottom_right_y}, top_left_x: {top_left_x}, bottom_right_x: {bottom_right_x}")
-            letters.append(self.ocr_tile(square))
+            letters.append(self.ocr_tile(square, f"rack_{i}"))
         return letters
 
-    def ocr_tile(self, tile):
+    def ocr_tile(self, tile, comments):
         """
         Perform OCR (Optical Character Recognition) on a given tile image.
 
@@ -63,32 +59,36 @@ class OcrWordfeudBoard():
         """
         image = Image.fromarray(tile)
         grayscale_image = image.convert("L")
-        threshold = 50
+        threshold = 40
         binary_image = grayscale_image.point(lambda x: 255 if x > threshold else 0, mode='1')
+        #write  binary image to file
+        #binary_image.save('images/tmp/ocr_tile_'+comments+'.png')
         letter = pytesseract.image_to_string(binary_image, config='--psm 10 --oem 3 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZ "')
         if letter:
             letter = letter[0]
         else:
             letter = '%'
         #binary_image.save('images/tmp/ocr_tile_'+letter+'.png')
+        #print(f" OCR: {comments} {letter[0]}")
+
         return letter
 
     def classify_dominant_color(self, image, threshold=50):
         # Convert to HSV
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)[:5, :5]
         # Define HSV ranges for different colors
         color_ranges = {
             'white': (np.array([0, 0, 200]), np.array([180, 55, 255])),
             'yellow': (np.array([22, 30, 170]), np.array([45, 150, 255]))
+        }
            # 'green': (np.array([35, 50, 50]), np.array([85, 255, 255])),
            # 'blue': (np.array([100, 50, 50]), np.array([140, 255, 255])),
            # 'red2': (np.array([160, 50, 50]), np.array([180, 255, 255])),
            # 'orange': (np.array([10, 100, 20]), np.array([25, 255, 255])),
            # 'dark gray': (np.array([30, 30, 40]), np.array([60, 70, 60]))
-        }
 
         max_percentage = 0
-        dominant_color = None
+        dominant_color = False
 
         for color, (lower, upper) in color_ranges.items():
             # Create a mask for the current color range
@@ -101,6 +101,10 @@ class OcrWordfeudBoard():
             if percentage > max_percentage and percentage > threshold:
                 max_percentage = percentage
                 dominant_color = color
+                #print(f"Found {color} in image.", end="")
+
+            #if not dominant_color:
+            #    print("White/Yellow not found in image.")
 
         return dominant_color
 
@@ -146,13 +150,14 @@ class OcrWordfeudBoard():
         for square in squares:
             row = count // 15
             column = count % 15
+            #print(f"Reading square {row},{column}")
             dominant_color = self.classify_dominant_color(square)
+            #cv2.imwrite('images/tmp/ocr_square_'+str(row)+','+str(column)+'.png', square)
 
             if dominant_color == 'white' or dominant_color == 'yellow':
-                #cv2.imwrite('images/tmp/ocr_square_'+str(row)+','+str(column)+'.png', square)
-                letter = self.ocr_tile(square)
-                self.update_square(row, column, letter + " ")
-                board_letters = board_letters + letter
+                letter = self.ocr_tile(square, f"{row},{column}")
+                self.update_square(row, column, letter)
+                board_letters = board_letters + letter + " "
             count += 1
         return board_letters
 
@@ -172,28 +177,6 @@ class OcrWordfeudBoard():
                 file.write(','.join(row) + '\n')
         print(f"Board saved to {file_path}.")
 
-    def read_board_file(self, file_path):
-            """
-            Read the board from the given file and update the current board.
-
-            Parameters:
-            - file_path (str): The path to the file containing the board.
-
-            Returns:
-            - list: The updated board as a list of lists.
-
-            """
-            with open(file_path, 'r') as file:
-                lines = file.readlines()
-                self.board = [line.strip("\n").split(",") for line in lines]
-                # replace all occurences of special_squares = ['DL', 'DW', 'TL', 'TW'] with '  ' in self.board
-                for i in range(len(self.board)):
-                    for j in range(len(self.board[i])):
-                        if self.board[i][j] in ['DL', 'DW', 'TL', 'TW']:
-                            self.board[i][j] = '  '
-
-            print(f"Board read from {file_path}.")
-            return self.board
 
     def read_board_letters(self, image_path):
         """
@@ -264,14 +247,19 @@ class WordFeudBoard:
         board_words = []
         for row in range(15):
             temp_word = ""
-            for col in range(15):
-                letter = board[row][col].letter
+            for col in range(16):
+                if col == 15:
+                    letter = "" # padding so that end of word is reached
+                else:
+                    letter = board[row][col].letter
+
                 if letter:
                     temp_word += letter
+                    #print(f"H temp_word: {temp_word}")
                 else:
                     if len(temp_word) > 1:
                         board_words.append(temp_word)
-                        placement.append([(row, col-len(temp_word)), temp_word, "across" ])
+                        placement.append([(row, col-len(temp_word)), temp_word, "across"])
                     temp_word = ""
         return board_words
 
@@ -279,10 +267,15 @@ class WordFeudBoard:
         board_words = []
         for col in range(15):
             temp_word = ""
-            for row in range(15):
-                letter = board[row][col].letter
+            for row in range(16):
+                if row == 15:
+                    letter = "" # padding so that end of word is reached
+                else:
+                    letter = board[row][col].letter
+
                 if letter:
                     temp_word += letter
+                    #print(f"V temp_word: {temp_word}")
                 else:
                     if len(temp_word) > 1:
                         placement.append([(row-len(temp_word), col), temp_word, "down"])
