@@ -43,11 +43,18 @@ class Game:
 
         resource_directory = os.path.join(resource_dir, self.board_type)
         tile_path = os.path.join(resource_directory, "tile_list.txt")
+        tile_count_path = os.path.join(resource_directory, "tile_count.txt")
         dictionary_path = os.path.join(resource_directory, "dictionary.txt")
         saved_dictionary_path = os.path.join(resource_directory, "dictionary.p")
 
         # load the list of tiles and their corresponding scores
         self.tiles = self.__load_tile_set_from_file(tile_path)
+
+        # if file exists, load the count of tiles
+        if os.path.exists(tile_count_path):
+            # load the count of tiles
+                self.tiles_count = self.__load_tile_set_from_file(tile_count_path)
+
 
         # load a saved dictionary object or construct a new one
         if os.path.exists(saved_dictionary_path):
@@ -95,7 +102,7 @@ class Game:
             self.board.update_cross_set(coordinate, other_direction, self.dictionary)
             coordinate = self.board.offset(coordinate, direction, 1)
 
-    def find_best_moves(self, rack, num=5):
+    def find_best_moves(self, rack, num=10):
         """returns the five best moves"""
 
         rack = list(rack)
@@ -112,15 +119,8 @@ class Game:
         values = []
         count = 0
         for move in moves[0:num]:
-            print(f"{count} {move}")
-            pattern = r'game.play\(\((.*?)\),"([^"]*)","([^"]*)"\)'
-            match = re.search(pattern, str(move))
-            tuple_str = match.group(1)  # This will be a string that looks like a tuple
-            first_string = match.group(2)
-            second_string = match.group(3)
-            # Converting the tuple string to an actual tuple
-            tuple_values = tuple(map(int, tuple_str.split(', ')))
-            values.append([tuple_values,first_string, second_string])
+            print(f"{count} {move.start_square} {move.word} {move.direction} for {move.score} Points")
+            values.append(move)
             count += 1
         return values
 
@@ -137,14 +137,11 @@ class Game:
                 # Pad the printed value of i with a space so that it is always two characters wide
                 print(str(i).rjust(2) + " " + row)
 
-        #print(self.board)
-
-
     @staticmethod
     def __load_tile_set_from_file(filename) -> dict:
         with open(filename) as f:
             tiles = f.readlines()  # ['A 1\n', 'B 4\n', 'C 4\n', 'D 2\n', ...]
-        return dict((tile[0], int(tile.strip("\n")[2:])) for tile in tiles)  # {'A': '1', 'B': '4', 'C': '4', ...}
+        return dict((tile[0], int(tile.strip("\n")[2:])) for tile in tiles)
 
     @staticmethod
     def __load_game_data_from_file(filename) -> dict:
@@ -493,9 +490,11 @@ class Board:
 
     @staticmethod
     def offset(coordinate, direction, offset):
+        print(f"coordinate = {coordinate} direction = {direction} offset = {offset}")
         if direction == "across":
             new_coordinate = coordinate[0], coordinate[1] + offset
         elif direction == "down":
+            print(coordinate[0])
             new_coordinate = coordinate[0] + offset, coordinate[1]
         else:
             raise TypeError("invalid direction specified: {}".format(direction))
@@ -571,8 +570,7 @@ class Move(object):
         self.score = score
 
     def __str__(self):
-        return "game.play({},\"{}\",\"{}\") for {} Points".format(
-            self.start_square, self.word, self.direction , self.score)
+        return f"{self.start_square}|{self.word}|{self.direction}|{self.score}"
 
 class SquareEffect(Enum):
     """An enum for special attributes for a square"""

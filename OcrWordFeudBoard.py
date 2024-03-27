@@ -9,8 +9,6 @@ import random
 import copy
 import utilities.logger as logger
 import utilities.errors as errors
-
-
 class OcrWordfeudBoard():
     def __init__(self,image_path):
         self.board = [['  ' for _ in range(15)] for _ in range(15)]
@@ -24,7 +22,6 @@ class OcrWordfeudBoard():
     def display_board(self):
         for row in self.board:
             print('  '.join(row))
-
 
     def get_rack_letters(self, image_path):
         """
@@ -64,7 +61,6 @@ class OcrWordfeudBoard():
         Returns:
             The recognized letter from the tile image, or '+' if no letter is recognized.
         """
-
         image = Image.fromarray(tile)
         grayscale_image = image.convert("L")
         threshold = 50
@@ -162,6 +158,9 @@ class OcrWordfeudBoard():
 
     def open_and_crop_image(self, image_path, x, y, w, h):
         img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        # Resize image to always be 960 × 2079 pixels
+        # This hack should allow screenshots from other phones to be used
+        img = cv2.resize(img, (960, 2079))
         # convert 16-bit to 8-bit
         img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
         return img[y:y+h, x:x+w]
@@ -209,20 +208,13 @@ class OcrWordfeudBoard():
         """
         logger.info("Reading WF Screenshot...")
 
-        saved_board_path = "games/WordFeudBoard.txt"
-
-        # If board file exists, read the board from the file
-        # to avoid the OCR process
-        if os.path.isfile(saved_board_path):
-            board_letters = self.read_board_file(saved_board_path)
-        else:
-            # Perform the necessary operations to read the board from the image
-            cropped_board = self.open_and_crop_image(image_path, 0, 500, 960, 960)
-            #cv2.imwrite('images/cropped_board.png', cropped_board)
-            squares = self.segment_board_into_squares(cropped_board)
-            board_letters = self.read_board(squares)
-            # Uncomment to save the board to a file for quicker debugging avoiding OCR
-            #self.save_board_file(saved_board_path)
+        # Perform the necessary operations to read the board from the image
+        cropped_board = self.open_and_crop_image(image_path, 0, 500, 960, 960)
+        #cv2.imwrite('images/cropped_board.png', cropped_board)
+        squares = self.segment_board_into_squares(cropped_board)
+        board_letters = self.read_board(squares)
+        # Uncomment to save the board to a file for quicker debugging avoiding OCR
+        #self.save_board_file(saved_board_path)
         return board_letters
 
 
