@@ -5,6 +5,7 @@ import scrabbler as sc
 import os
 import shutil
 import time
+import re
 
 def poll_updated_screenshot(image_path):
     # check if there is a new file in the directory ~/Downloads with name like IMG_*.jpeg
@@ -18,10 +19,36 @@ def poll_updated_screenshot(image_path):
             return True
     return False
 
-def find_move(image_path, ocr, wf, game, tile_bag):
+def remaining_letters(game, played_letters):
+    # A list to collect keys to remove after iteration
+    keys_to_remove = []
+    formatted_list = []
+    tiles_left = 0
+    # Reducing the tile count based on played letters
+    for letter in played_letters:
+        if letter in game.tiles_count:
+            game.tiles_count[letter] -= 1
+            # Check if the count is 0 to mark for removal
+            if game.tiles_count[letter] == 0:
+                keys_to_remove.append(letter)
+
+    # Removing entries with 0 count
+    for key in keys_to_remove:
+        del game.tiles_count[key]
+
+    sorted_tile_count = dict(sorted(game.tiles_count.items()))
+    # Formatting and printing the sorted tile counts
+    for letter, count in sorted_tile_count.items():
+        formatted_list.append(f"{letter}={count} ")
+        tiles_left += count
+
+    return tiles_left, ''.join(formatted_list)
+
+
+def find_move(image_path, ocr, wf, game):
     rack = ocr.get_rack_letters(image_path)
-    [tile_bag.remove(letter) for letter in rack]
-    ocr.read_board_letters(image_path)
+    played_letters = ocr.read_board_letters(image_path)
+    # Transfer OCR'd board to WordFeudBoard
     for i in range(15):
         for j in range(15):
             if ocr.read_square(i,j) != '  ':
@@ -32,46 +59,49 @@ def find_move(image_path, ocr, wf, game, tile_bag):
         game.play(i[0], i[1], i[2])
 
     #game.board._print_special_tiles()
+    print("")
     game.show()
-    rack = "".join(rack)
-    print(f"rack = {rack}")
+    rack = ''.join(rack)
+    print(f"\nRack: {rack}\n")
+    count, letter = remaining_letters(game, played_letters)
+    print(f"Tiles Left ({count}): {letter}\n")
+    print("\nPossible Moves:")
 
     options = game.find_best_moves(rack)
     op_max = len(options)-1
     if options:
-        user_input = input(f"Enter option to play from 0 to {op_max}:")
+        user_input = input(f"\nEnter option to play from 0-{op_max}: ")
         if user_input.isdigit() and int(user_input) in range(op_max):
             move = options[int(user_input)]
-            print(f"move = {move[0]} {move[1]} {move[2]}")
-            game.play(move[0], move[1], move[2])
+
+            pattern = r'game.play\(\((.*?)\),"([^"]*)","([^"]*)"\)'
+            # Searching for the pattern
+            match = re.search(pattern, str(move))
+
+            # Extracting the groups
+            tuple_str = match.group(1)  # This will be a string that looks like a tuple
+            first_string = match.group(2)
+            second_string = match.group(3)
+
+            # Converting the tuple string to an actual tuple
+            tuple_values = tuple(map(int, tuple_str.split(', ')))
+
+            game.play(tuple_values, first_string, second_string)
+            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n")
             game.show()
+            print("\n")
 
 if __name__ == "__main__":
-    tile_bag = ["A"] * 9 + ["B"] * 2 + ["C"] * 2 + ["D"] * 4 + ["E"] * 12 + ["F"] * 2 + ["G"] * 3 + \
-                ["H"] * 2 + ["I"] * 9 + ["J"] * 1 + ["K"] * 1 + ["L"] * 4 + ["M"] * 2 + ["N"] * 6 + \
-                ["O"] * 8 + ["P"] * 2 + ["Q"] * 1 + ["R"] * 6 + ["S"] * 4 + ["T"] * 6 + ["U"] * 4 + \
-                ["V"] * 2 + ["W"] * 2 + ["X"] * 1 + ["Y"] * 2 + ["Z"] * 1 + ["%"] * 2
-
-
-    image_path = "images/WordFeudScreenshot1.jpeg"
+    image_path = "images/WordFeudScreenshot.jpeg"
     ocr = OcrWordfeudBoard(image_path)
     wf = WordFeudBoard()
     game = sc.Game(board="wordfeud")
+
     i = 0
     while True:
         while poll_updated_screenshot(image_path)==False:
             i += 1
-            print(f"\rwaiting for updated screenshot {i}", end="")
+            print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
             time.sleep(10)
-        find_move(image_path, ocr, wf, game, tile_bag)
+        find_move(image_path, ocr, wf, game)
         game.board.reset_board("wordfeud")
-
-
-# TODO For each choice of move figure out the best move for the opponent based
-# on the current board state and the opponent's rack.
-# Play the next hand and see which one scores higher
-# See if the board can be reset to the original state after each move
-# If not, then the board should be copied before each move
-# If the board can be reset, then the board should be reset after each move
-
-# TODO Fix the scoring
