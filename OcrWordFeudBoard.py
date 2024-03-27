@@ -4,7 +4,7 @@ import numpy as np
 import pytesseract
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
-import regex as re
+import regexp as re
 import random
 import copy
 import utilities.logger as logger

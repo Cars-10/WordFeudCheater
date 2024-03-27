@@ -3,7 +3,7 @@ import pickle
 import string
 import json
 import gzip
-import regex as re
+import re
 from enum import Enum
 from scrabbler.dictionary import Dictionary, DELIMITER, Arc
 import utilities.logger as logger
@@ -490,11 +490,9 @@ class Board:
 
     @staticmethod
     def offset(coordinate, direction, offset):
-        print(f"coordinate = {coordinate} direction = {direction} offset = {offset}")
         if direction == "across":
             new_coordinate = coordinate[0], coordinate[1] + offset
         elif direction == "down":
-            print(coordinate[0])
             new_coordinate = coordinate[0] + offset, coordinate[1]
         else:
             raise TypeError("invalid direction specified: {}".format(direction))
@@ -570,8 +568,8 @@ class Move(object):
         self.score = score
 
     def __str__(self):
-        return f"{self.start_square}|{self.word}|{self.direction}|{self.score}"
-
+        return "game.play({},\"{}\",\"{}\") for {} Points".format(
+            self.start_square, self.word, self.direction , self.score)
 class SquareEffect(Enum):
     """An enum for special attributes for a square"""
 

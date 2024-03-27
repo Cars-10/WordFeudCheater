@@ -5,6 +5,7 @@ import scrabbler as sc
 import os
 import shutil
 import time
+import re
 
 def poll_updated_screenshot(image_path):
     # check if there is a new file in the directory ~/Downloads with name like IMG_*.jpeg
@@ -58,23 +59,37 @@ def find_move(image_path, ocr, wf, game):
         game.play(i[0], i[1], i[2])
 
     #game.board._print_special_tiles()
+    print("")
     game.show()
     rack = ''.join(rack)
-    print(f"Rack: {rack}")
+    print(f"\nRack: {rack}\n")
     count, letter = remaining_letters(game, played_letters)
-    print(f"Tiles Left {count}: {letter}")
+    print(f"Tiles Left ({count}): {letter}\n")
+    print("\nPossible Moves:")
 
     options = game.find_best_moves(rack)
     op_max = len(options)-1
-    print("\nPossible Moves:")
     if options:
         user_input = input(f"\nEnter option to play from 0-{op_max}: ")
         if user_input.isdigit() and int(user_input) in range(op_max):
-            move = str(options[int(user_input)]).split('|')
+            move = options[int(user_input)]
 
-            print(f"{move[0]}, {move[1]}, {move[2]}")
-            game.play(str(move[0]), move[1], move[2])
+            pattern = r'game.play\(\((.*?)\),"([^"]*)","([^"]*)"\)'
+            # Searching for the pattern
+            match = re.search(pattern, str(move))
+
+            # Extracting the groups
+            tuple_str = match.group(1)  # This will be a string that looks like a tuple
+            first_string = match.group(2)
+            second_string = match.group(3)
+
+            # Converting the tuple string to an actual tuple
+            tuple_values = tuple(map(int, tuple_str.split(', ')))
+
+            game.play(tuple_values, first_string, second_string)
+            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n")
             game.show()
+            print("\n")
 
 if __name__ == "__main__":
     image_path = "images/WordFeudScreenshot.jpeg"
