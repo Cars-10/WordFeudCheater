@@ -31,6 +31,7 @@ def find_move(image_path, ocr, wf, game, tile_bag):
     for i in placement:
         game.play(i[0], i[1], i[2])
 
+    #game.board._print_special_tiles()
     game.show()
     rack = "".join(rack)
     print(f"rack = {rack}")

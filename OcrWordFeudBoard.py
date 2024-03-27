@@ -7,6 +7,8 @@ from PIL import Image, ImageDraw
 import regex as re
 import random
 import copy
+import utilities.logger as logger
+import utilities.errors as errors
 
 
 class OcrWordfeudBoard():
@@ -34,6 +36,7 @@ class OcrWordfeudBoard():
         Returns:
             list: A list of extracted letters from the rack.
         """
+        logger.info("Extracting rack letters...")
         cropped_rack = self.open_and_crop_image(image_path, 15, 1700, 930, 120)
         cv2.imwrite('images/cropped_rack.png', cropped_rack)
 
@@ -205,7 +208,8 @@ class OcrWordfeudBoard():
             list: A list of letters representing the WordFeud board.
 
         """
-        # Example usage:
+        logger.info("Reading WF Screenshot...")
+
         saved_board_path = "games/WordFeudBoard.txt"
 
         # If board file exists, read the board from the file
