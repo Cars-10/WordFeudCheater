@@ -3,6 +3,7 @@ import pickle
 import string
 import json
 import gzip
+import regex as re
 from enum import Enum
 from scrabbler.dictionary import Dictionary, DELIMITER, Arc
 import utilities.logger as logger
@@ -103,13 +104,37 @@ class Game:
             moves = across_moves + down_moves
 
         moves.sort(key=lambda move_: move_.score, reverse=True)
+        values = []
+        count = 0
         for move in moves[0:num]:
-            print(move)
+            print(f"{count} {move}")
+            pattern = r'game.play\(\((.*?)\),"([^"]*)","([^"]*)"\)'
+            match = re.search(pattern, str(move))
+            tuple_str = match.group(1)  # This will be a string that looks like a tuple
+            first_string = match.group(2)
+            second_string = match.group(3)
+            # Converting the tuple string to an actual tuple
+            tuple_values = tuple(map(int, tuple_str.split(', ')))
+            values.append([tuple_values,first_string, second_string])
+            count += 1
+        return values
 
     def show(self):
-        """prints the board to terminal"""
-        print(self.board)
-    
+        """prints the board to terminal
+            Prints the current state of the board.
+        """
+        text = str(self.board)
+        # print text with row and col headers
+         # Pad the printed value of i with a space so that it is always two characters wide
+        print("  " + " ".join(str(i).rjust(2) for i in range(self.board.size)))
+        for i, row in enumerate(text.split("\n")):
+            if i != 15:
+                # Pad the printed value of i with a space so that it is always two characters wide
+                print(str(i).rjust(2) + " " + row)
+
+        #print(self.board)
+
+
     @staticmethod
     def __load_tile_set_from_file(filename) -> dict:
         with open(filename) as f:
@@ -157,6 +182,50 @@ class Board:
             row_string = "  ".join(tile if tile else "-" for tile in row)
             board_string = board_string + row_string + "\n"
         return board_string
+
+    # Little Helper Function to print the special tiles
+    def _print_special_tiles(self):
+        for i in range(self.size):
+            row = (self.square(i, j).effect for j in range(self.size))
+            for tile in row:
+                if tile == SquareEffect.NULL:
+                    print("  ", end="")
+                elif tile == SquareEffect.DL:
+                    print("dl", end="")
+                elif tile == SquareEffect.DW:
+                    print("dw", end="")
+                elif tile == SquareEffect.TL:
+                    print("tl", end="")
+                elif tile == SquareEffect.TW:
+                    print("tw", end="")
+
+            row_string = "  ".join(tile if tile else "-" for tile in row)
+            print(row_string)
+
+
+
+    def reset_board(self, board_type):
+        self.board_type = board_type
+        self.empty = True
+
+        board_path = os.path.join(resource_dir, board_type)
+        full_board_path = os.path.join(board_path, "board.json")
+
+        with open(full_board_path) as json_data:
+            board_data = json.load(json_data)
+        self.size = board_data['size']
+        self._board = [Square() for _ in range(self.size * self.size)]
+
+        special_squares = board_data['special_squares']
+        for coordinate in special_squares['DL']:
+            self.square(*coordinate).effect = SquareEffect.DL
+        for coordinate in special_squares['DW']:
+            self.square(*coordinate).effect = SquareEffect.DW
+        for coordinate in special_squares['TL']:
+            self.square(*coordinate).effect = SquareEffect.TL
+        for coordinate in special_squares['TW']:
+            self.square(*coordinate).effect = SquareEffect.TW
+
 
     def square(self, row, col):
         """gets the square on the given coordinate, return None if out of bounds"""
@@ -461,6 +530,7 @@ class Square:
     @tile.setter
     def tile(self, char):
         if self.tile and char != self.tile:
+            print(f"char = {char} self.tile = {self.tile}")
             raise errors.IllegalMoveError("a tile already exists on this square")
         if char < 'A' or char > 'Z':
             raise errors.IllegalMoveError("illegal move! Letter placed must be in the alphabet")
@@ -496,8 +566,11 @@ class Move(object):
         self.score = score
 
     def __str__(self):
-        return "Play \"{}\" {} from {} to get {} points.".format(
-            self.word, self.direction, self.start_square, self.score)
+        #return "Play \"{}\" {} from {} to get {} points.".format(
+        #    self.word, self.direction, self.start_square, self.score)
+        return "game.play({},\"{}\",\"{}\") for {} Points".format(
+            self.start_square, self.word, self.direction , self.score)
+
 
 
 class SquareEffect(Enum):
