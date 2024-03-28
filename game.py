@@ -6,6 +6,8 @@ import os
 import shutil
 import time
 import re
+import utilities.logger as logger
+import utilities.errors as errors
 
 def poll_updated_screenshot(image_path):
     # check if there is a new file in the directory ~/Downloads with name like IMG_*.jpeg
@@ -15,7 +17,7 @@ def poll_updated_screenshot(image_path):
             # move the file to image_path
             new_file_path = os.path.join(download_dir, filename)
             shutil.move(new_file_path, image_path)
-            print(f"\rFound new screenshot: {filename}")
+            logger.info(f"Found new screenshot: {filename}")
             return True
     return False
 
@@ -43,7 +45,7 @@ def remaining_letters(game, played_letters):
         formatted_list.append(f"{letter}={count} ")
         tiles_left += count
     if tiles_left <= 7:
-        tiles_left = game.tiles_max - tiles_left
+        tiles_left = game.tiles_max - tiles_left - 1
     else:
         tiles_left -= 7
 
@@ -68,7 +70,7 @@ def find_move(image_path, ocr, wf, game):
     print(f"\nRack: {rack}\n")
     count, letter = remaining_letters(game, played_letters+rack)
 
-    print(f"Tiles Left: ({count})\nTiles Left: {letter}\n")
+    print(f"Bag Tiles: ({count})\nTiles Left: {letter}\n")
     print("\nPossible Moves:")
 
     options = game.find_best_moves(rack)
@@ -92,9 +94,8 @@ def find_move(image_path, ocr, wf, game):
             tuple_values = tuple(map(int, tuple_str.split(', ')))
 
             game.play(tuple_values, first_string, second_string)
-            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n")
             game.show()
-            print("\n")
+            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n\n")
 
 if __name__ == "__main__":
     image_path = "images/WordFeudScreenshot.jpeg"
@@ -104,10 +105,12 @@ if __name__ == "__main__":
 
     i = 0
     while True:
+        print("")
         while poll_updated_screenshot(image_path)==False:
             i += 1
             print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
             time.sleep(10)
+        print("")
         find_move(image_path, ocr, wf, game)
         ocr = OcrWordfeudBoard(image_path)
         wf = WordFeudBoard()
