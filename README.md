@@ -23,3 +23,4 @@ When found will, it moves it into the images directory, analyzes the board and w
 ### ToDo:
 - Emulate the competitor, by playing the next move after yours to see what possible follow up scores they could get.
 - Add a Graphical Front End using pygame.
+- Identify blank square that are played and have not points

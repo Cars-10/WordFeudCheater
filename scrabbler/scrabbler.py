@@ -14,10 +14,10 @@ resource_dir = os.path.join(script_dir, "../resources")
 full_saved_games_dir = os.path.join(script_dir, "../games/")
 
 
-class Game:
+class  Game:
     """stores information about a game"""
 
-    def __init__(self, filename="", board="wwf15"):
+    def __init__(self, filename="", board="wwf15", dict=""):
         """constructor for a game
 
         Args:
@@ -54,19 +54,30 @@ class Game:
         if os.path.exists(tile_count_path):
             # load the count of tiles
                 self.tiles_count = self.__load_tile_set_from_file(tile_count_path)
+                self.tiles_max = sum(self.tiles_count.values())
 
 
-        # load a saved dictionary object or construct a new one
-        if os.path.exists(saved_dictionary_path):
-            logger.info("loading saved dictionary file...")
-            self.dictionary = Dictionary.load_from_pickle(saved_dictionary_path)
+        if dict:
+            self.dictionary = dict
         else:
-            logger.info("constructing dictionary...")
-            self.dictionary = Dictionary.construct_with_text_file(dictionary_path)
-            logger.info("saving dictionary structure...")
-            self.dictionary.store(saved_dictionary_path)
+            # load a saved dictionary object or construct a new one
+            if os.path.exists(saved_dictionary_path):
+                logger.info("loading saved dictionary file...")
+                self.dictionary = Dictionary.load_from_pickle(saved_dictionary_path)
+            else:
+                logger.info("constructing dictionary...")
+                self.dictionary = Dictionary.construct_with_text_file(dictionary_path)
+                logger.info("saving dictionary structure...")
+                self.dictionary.store(saved_dictionary_path)
 
-        logger.info("Game initialized successfully.")
+            logger.info("Game initialized successfully.")
+
+
+    def reset_game(self):
+        """Resets the game with an empty board"""
+        logger.info("Resetting game and initializing new empty board...")
+        self.board = Board(self.board_type)
+        self.filename = None
 
     def save(self, filename=None):
         """saves an unfinished game to disk"""
@@ -122,7 +133,7 @@ class Game:
         for move in moves[0:num]:
             print(f"{count} {move.start_square} {move.word} {move.direction} for {move.score} Points")
             values.append(move)
-            count += 1
+            count += 10
         return values
 
     def show(self):
@@ -204,31 +215,6 @@ class Board:
 
             row_string = "  ".join(tile if tile else "-" for tile in row)
             print(row_string)
-
-
-
-    def reset_board(self, board_type):
-        self.board_type = board_type
-        self.empty = True
-
-        board_path = os.path.join(resource_dir, board_type)
-        full_board_path = os.path.join(board_path, "board.json")
-
-        with open(full_board_path) as json_data:
-            board_data = json.load(json_data)
-        self.size = board_data['size']
-        self._board = [Square() for _ in range(self.size * self.size)]
-
-        special_squares = board_data['special_squares']
-        for coordinate in special_squares['DL']:
-            self.square(*coordinate).effect = SquareEffect.DL
-        for coordinate in special_squares['DW']:
-            self.square(*coordinate).effect = SquareEffect.DW
-        for coordinate in special_squares['TL']:
-            self.square(*coordinate).effect = SquareEffect.TL
-        for coordinate in special_squares['TW']:
-            self.square(*coordinate).effect = SquareEffect.TW
-
 
     def square(self, row, col):
         """gets the square on the given coordinate, return None if out of bounds"""
@@ -520,12 +506,13 @@ class Square:
 
     """
 
-    __slots__ = "_cross_set", "_tile", "_effect"
+    __slots__ = "_cross_set", "_tile", "_effect", "_blank_square"
 
     def __init__(self):
         self._tile = None
         self._effect = SquareEffect.NULL
         self._cross_set = {'down': set(string.ascii_uppercase), 'across': set(string.ascii_uppercase)}
+        self._blank_square = False
 
     @property
     def tile(self):

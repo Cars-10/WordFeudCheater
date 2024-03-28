@@ -44,10 +44,11 @@ class OcrWordfeudBoard():
             bottom_right_x = (i + 1) * square_size - padding * 2
             square = cropped_rack[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
             #print(f"top_left_y: {top_left_y}, bottom_right_y: {bottom_right_y}, top_left_x: {top_left_x}, bottom_right_x: {bottom_right_x}")
-            letters.append(self.ocr_tile(square, f"rack_{i}"))
+            letter = self.ocr_tile(square,threshold=2, save_image=False, comments="")
+            letters.append(letter)
         return letters
 
-    def ocr_tile(self, tile, comments):
+    def ocr_tile(self, tile, threshold=5, save_image=False, comments=""):
         """
         Perform OCR (Optical Character Recognition) on a given tile image.
 
@@ -59,17 +60,17 @@ class OcrWordfeudBoard():
         """
         image = Image.fromarray(tile)
         grayscale_image = image.convert("L")
-        threshold = 40
         binary_image = grayscale_image.point(lambda x: 255 if x > threshold else 0, mode='1')
-        #write  binary image to file
-        #binary_image.save('images/tmp/ocr_tile_'+comments+'.png')
         letter = pytesseract.image_to_string(binary_image, config='--psm 10 --oem 3 -c tessedit_char_whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZ "')
         if letter:
             letter = letter[0]
         else:
             letter = '%'
-        #binary_image.save('images/tmp/ocr_tile_'+letter+'.png')
-        #print(f" OCR: {comments} {letter[0]}")
+
+        if save_image:
+            binary_image.save('images/tmp/ocr_tile_'+letter+comments+'.png')
+        if comments:
+            print(f"OCR:{letter} {comments} ")
 
         return letter
 
@@ -126,7 +127,7 @@ class OcrWordfeudBoard():
                     top_left_y = i * square_size + padding
                     bottom_right_y = (i + 1) * square_size - padding
                     top_left_x = j * square_size + padding
-                    bottom_right_x = (j + 1) * square_size - padding*2
+                    bottom_right_x = (j + 1) * square_size - padding*2 - 2
                     square = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
                     #print(f"top_left_y: {top_left_y}, bottom_right_y: {bottom_right_y}, top_left_x: {top_left_x}, bottom_right_x: {bottom_right_x}")
                     squares.append(square)
@@ -155,7 +156,7 @@ class OcrWordfeudBoard():
             #cv2.imwrite('images/tmp/ocr_square_'+str(row)+','+str(column)+'.png', square)
 
             if dominant_color == 'white' or dominant_color == 'yellow':
-                letter = self.ocr_tile(square, f"{row},{column}")
+                letter = self.ocr_tile(square, save_image=False, comments="")
                 self.update_square(row, column, letter)
                 board_letters = board_letters + letter + " "
             count += 1
