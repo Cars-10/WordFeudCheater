@@ -6,6 +6,8 @@ import os
 import shutil
 import time
 import re
+import utilities.logger as logger
+import utilities.errors as errors
 
 def poll_updated_screenshot(image_path):
     # check if there is a new file in the directory ~/Downloads with name like IMG_*.jpeg
@@ -15,7 +17,7 @@ def poll_updated_screenshot(image_path):
             # move the file to image_path
             new_file_path = os.path.join(download_dir, filename)
             shutil.move(new_file_path, image_path)
-            print(f"\rFound new screenshot: {filename}")
+            logger.info(f"Found new screenshot: {filename}")
             return True
     return False
 
@@ -27,6 +29,7 @@ def remaining_letters(game, played_letters):
     # Reducing the tile count based on played letters
     for letter in played_letters:
         if letter in game.tiles_count:
+            #print(f"Letter: {letter} Count: {game.tiles_count[letter]}")
             game.tiles_count[letter] -= 1
             # Check if the count is 0 to mark for removal
             if game.tiles_count[letter] == 0:
@@ -41,6 +44,10 @@ def remaining_letters(game, played_letters):
     for letter, count in sorted_tile_count.items():
         formatted_list.append(f"{letter}={count} ")
         tiles_left += count
+    if tiles_left <= 7:
+        tiles_left = game.tiles_max - tiles_left - 1
+    else:
+        tiles_left -= 7
 
     return tiles_left, ''.join(formatted_list)
 
@@ -61,16 +68,16 @@ def find_move(image_path, ocr, wf, game):
     game.show()
     rack = ''.join(rack)
     print(f"\nRack: {rack}\n")
-    count, letter = remaining_letters(game, played_letters)
-    print(f"Tiles Left ({count}): {letter}\n")
+    count, letter = remaining_letters(game, played_letters+rack)
+
+    print(f"Bag Tiles: ({count})\nTiles Left: {letter}\n")
     print("\nPossible Moves:")
 
     options = game.find_best_moves(rack)
     op_max = len(options)-1
     if options:
-        user_input = input(f"\nEnter option to play from 0-{op_max} q=quit: ")
-        if user_input == 'q':
-            sys.exit(0)
+        user_input = input(f"\nEnter option to play from 0-{op_max} ^C^C to quit: ")
+
         if user_input.isdigit() and int(user_input) in range(op_max):
             move = options[int(user_input)]
 
@@ -87,9 +94,8 @@ def find_move(image_path, ocr, wf, game):
             tuple_values = tuple(map(int, tuple_str.split(', ')))
 
             game.play(tuple_values, first_string, second_string)
-            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n")
             game.show()
-            print("\n")
+            print(f"\nPlayed: {first_string} at {tuple_values} with {second_string}\n\n")
 
 if __name__ == "__main__":
     image_path = "images/WordFeudScreenshot.jpeg"
@@ -98,12 +104,17 @@ if __name__ == "__main__":
     game = sc.Game(board="wordfeud")
 
     i = 0
-    while poll_updated_screenshot(image_path)==False:
-        i += 1
-        print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
-        time.sleep(10)
-    find_move(image_path, ocr, wf, game)
-    sys.exit(0)
-    game.board.reset_board("wordfeud")
+    while True:
+        print("")
+        while poll_updated_screenshot(image_path)==False:
+            i += 1
+            print(f"\rWaiting 10 seconds for updated screenshot {i}", end="")
+            time.sleep(10)
+        print("")
+        find_move(image_path, ocr, wf, game)
+        ocr = OcrWordfeudBoard(image_path)
+        wf = WordFeudBoard()
+        game = sc.Game(board="wordfeud", dict=game.dictionary)
 
 # TODO create a list of killer small words to not make available to the opponent
+# TODO check if tiles left over calculation is accurate
